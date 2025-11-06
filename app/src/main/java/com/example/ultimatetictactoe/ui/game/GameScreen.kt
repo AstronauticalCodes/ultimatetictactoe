@@ -3,14 +3,12 @@ package com.example.ultimatetictactoe.ui.game
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -29,21 +27,56 @@ import com.example.ultimatetictactoe.ui.theme.UltimateTicTacToeTheme
 @Composable
 fun GameScreen(gameViewModel: GameViewModel = viewModel()) {
     val game by gameViewModel.gameState.collectAsState()
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .navigationBarsPadding()
-            .background(color = Color.White)
-            .fillMaxSize()
-            .systemBarsPadding()
-    ) {
-        Scoreboard(game.xScore, game.oScore, game.currentPlayer)
-        UltimateTicTacToeBoard(
-            game = game,
-            onCellClicked = gameViewModel::onCellClicked
-        )
+    val soundPlayer = rememberSoundPlayer()
+
+    LaunchedEffect(game.xScore, game.oScore) {
+        if (game.xScore > 0 || game.oScore > 0) {
+            soundPlayer.playScore()
+        }
+    }
+
+    LaunchedEffect(game.winner) {
+        if (game.winner != null) {
+            soundPlayer.playWin()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Scoreboard(game.xScore, game.oScore, game.currentPlayer)
+            UltimateTicTacToeBoard(
+                game = game,
+                onCellClicked = { smallBoard, cell ->
+                    if (game.winner == null) {
+                        soundPlayer.playTap()
+                        gameViewModel.onCellClicked(smallBoard, cell)
+                    }
+                }
+            )
+        }
+        if (game.winner != null) {
+            GameOverOverlay(winner = game.winner!!)
+        }
     }
 }
+
+@Composable
+fun GameOverOverlay(winner: Player) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color.Black.copy(alpha = 0.6f)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = "Winner: ${winner.name}",
+                fontSize = 56.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+    }
+}
+
 
 @Composable
 fun Scoreboard(xScore: Int, oScore: Int, currentPlayer: Player) {
@@ -54,18 +87,8 @@ fun Scoreboard(xScore: Int, oScore: Int, currentPlayer: Player) {
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "Player O: $oScore",
-            fontSize = 20.sp,
-            fontWeight = if (currentPlayer == Player.O) FontWeight.Bold else FontWeight.Normal,
-            color = Color.Black,
-        )
-        Text(
-            text = "Player X: $xScore",
-            fontSize = 20.sp,
-            color = Color.Black,
-            fontWeight = if (currentPlayer == Player.X) FontWeight.Bold else FontWeight.Normal
-        )
+        Text(text = "Player O: $oScore", fontSize = if (currentPlayer == Player.O) 30.sp else 20.sp, fontWeight = if (currentPlayer == Player.O) FontWeight.Bold else FontWeight.Normal)
+        Text(text = "Player X: $xScore", fontSize = if (currentPlayer == Player.X) 30.sp else 20.sp, fontWeight = if (currentPlayer == Player.X) FontWeight.Bold else FontWeight.Normal)
     }
 }
 
@@ -150,48 +173,13 @@ fun Cell(player: Player?, onClick: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier
             .aspectRatio(1f)
             .padding(1.dp)
-            .border(1.dp, Color.Gray)
+            .border(1.dp, Color.DarkGray)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         if (player != null) {
-            Text(
-                text = player.name,
-                color = Color.Gray,
-                fontSize = 24.sp
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GameScreenPreview() {
-    UltimateTicTacToeTheme {
-        val game = Game(
-            board = List(9) { smallBoardIndex ->
-                when (smallBoardIndex) {
-                    0 -> listOf(Player.X, Player.X, Player.X, null, null, null, null, null, null) // Row win
-                    1 -> listOf(Player.O, null, null, Player.O, null, null, Player.O, null, null) // Col win
-                    4 -> listOf(Player.X, null, null, null, Player.X, null, null, null, Player.X) // Diag win
-                    else -> List(9) { null }
-                }
-            },
-            activeSmallBoard = 2,
-            xScore = 2,
-            oScore = 1,
-            winningLines = List(9) { smallBoardIndex ->
-                 when (smallBoardIndex) {
-                    0 -> listOf(WinningLine(0, 2))
-                    1 -> listOf(WinningLine(0, 6))
-                    4 -> listOf(WinningLine(0, 8))
-                    else -> emptyList()
-                }
-            }
-        )
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Scoreboard(game.xScore, game.oScore, game.currentPlayer)
-            UltimateTicTacToeBoard(game = game, onCellClicked = { _, _ -> })
+            val markColor = if (player == Player.X) Color.Black else Color.White
+            Text(text = player.name, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = markColor)
         }
     }
 }

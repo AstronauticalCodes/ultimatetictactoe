@@ -6,7 +6,8 @@ data class Game(
     val activeSmallBoard: Int? = null,
     val xScore: Int = 0,
     val oScore: Int = 0,
-    val winningLines: List<List<WinningLine>> = List(9) { emptyList() }
+    val winningLines: List<List<WinningLine>> = List(9) { emptyList() },
+    val winner: Player? = null
 )
 
 enum class Player {
